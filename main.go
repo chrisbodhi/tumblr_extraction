@@ -70,19 +70,35 @@ func main() {
 			hugoPhoto.Date = photoPost.BasePost.Date
 			hugoPhoto.Tags = photoPost.BasePost.Tags
 			hugoPhoto.Categories = append(hugoPhoto.Categories, "imported from tumblr", "photo")
-			hugoPhoto.Content = fmt.Sprintf("![](%s) <br /> %s", photoPost.Photos[0].Alt_sizes[0].Url, photoPost.Caption)
+			hugoPhoto.Content = fmt.Sprintf("![%s](%s) <br /> %s", photoPost.BasePost.Post_url, photoPost.Photos[0].Alt_sizes[0].Url, photoPost.Caption)
 
 			hugoPosts = append(hugoPosts, hugoPhoto)
 		case "quote":
 			quotePost := got.QuotePost{}
 			json.Unmarshal(elem, &quotePost)
 
-			fmt.Printf("%+v", quotePost)
+			hugoQuote := HugoPost{}
 
+			hugoQuote.Title = fmt.Sprintf("Quote for %s", quotePost.BasePost.Date)
+			hugoQuote.Date = quotePost.BasePost.Date
+			hugoQuote.Tags = quotePost.BasePost.Tags
+			hugoQuote.Categories = append(hugoQuote.Categories, "imported from tumblr", "quote")
+			hugoQuote.Content = fmt.Sprintf("%s", quotePost.Text)
+
+			hugoPosts = append(hugoPosts, hugoQuote)
 		case "text":
 			textPost := got.TextPost{}
 			json.Unmarshal(elem, &textPost)
 
+			hugoText := HugoPost{}
+
+			hugoText.Title = textPost.Title
+			hugoText.Date = textPost.BasePost.Date
+			hugoText.Tags = textPost.BasePost.Tags
+			hugoText.Categories = append(hugoText.Categories, "imported from tumblr", "text")
+			hugoText.Content = fmt.Sprintf("%s", textPost.Body)
+
+			hugoPosts = append(hugoPosts, hugoText)
 		default:
 			fmt.Println("\n%v\n", postType)
 		}
