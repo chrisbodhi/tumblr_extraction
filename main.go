@@ -16,22 +16,6 @@ func main() {
 		fmt.Printf("Error loading .env file.")
 	}
 
-	client := got.NewTumblrRestClient(
-		myEnvs["CONSUMER_KEY"],
-		myEnvs["CONSUMER_SECRET"],
-		myEnvs["OAUTH_TOKEN"],
-		myEnvs["OAUTH_TOKEN_SECRET"],
-		"",
-		"http://api.tumblr.com")
-
-	codeBlog := "codeblocks.tumblr.com"
-	// Empty because not trying to filter anything
-	// Not a huge blog dump that's going to happen here
-	opts := map[string]string{}
-
-	posts := client.Posts(codeBlog, "", opts)
-	fmt.Println(posts.Total_posts)
-
 	type HugoPost struct {
 		Title      string
 		Date       string
@@ -42,68 +26,116 @@ func main() {
 
 	var hugoPosts []HugoPost
 
-	for _, elem := range posts.Posts {
-		postBase := got.BasePost{}
-		json.Unmarshal(elem, &postBase)
+	client := got.NewTumblrRestClient(
+		myEnvs["CONSUMER_KEY"],
+		myEnvs["CONSUMER_SECRET"],
+		myEnvs["OAUTH_TOKEN"],
+		myEnvs["OAUTH_TOKEN_SECRET"],
+		"",
+		"http://api.tumblr.com")
 
-		switch postType := postBase.PostType; postType {
-		case "link":
-			linkPost := got.LinkPost{}
-			json.Unmarshal(elem, &linkPost)
+	codeBlog := "codeblocks.tumblr.com"
 
-			hugoLink := HugoPost{}
+	opts := map[string]string{}
 
-			hugoLink.Title = linkPost.Title
-			hugoLink.Date = linkPost.BasePost.Date
-			hugoLink.Tags = linkPost.BasePost.Tags
-			hugoLink.Categories = append(hugoLink.Categories, "imported from tumblr", "link")
-			hugoLink.Content = fmt.Sprintf("[%s](%s)", linkPost.Description, linkPost.Url)
+	posts := client.Posts(codeBlog, "", opts)
+	total := posts.Total_posts
+	timesToReq := int(total / 20) + 1
 
-			hugoPosts = append(hugoPosts, hugoLink)
-		case "photo":
-			photoPost := got.PhotoPost{}
-			json.Unmarshal(elem, &photoPost)
+	for i := 0; i <= timesToReq; i++ {
 
-			hugoPhoto := HugoPost{}
+		opts["offset"] = fmt.Sprintf("%d", i * 20)
+		posts := client.Posts(codeBlog, "", opts)
 
-			hugoPhoto.Title = fmt.Sprintf("Photo for %s", photoPost.BasePost.Date) 
-			hugoPhoto.Date = photoPost.BasePost.Date
-			hugoPhoto.Tags = photoPost.BasePost.Tags
-			hugoPhoto.Categories = append(hugoPhoto.Categories, "imported from tumblr", "photo")
-			hugoPhoto.Content = fmt.Sprintf("![%s](%s) <br /> %s", photoPost.BasePost.Post_url, photoPost.Photos[0].Alt_sizes[0].Url, photoPost.Caption)
+		for _, elem := range posts.Posts {
+			postBase := got.BasePost{}
+			json.Unmarshal(elem, &postBase)
 
-			hugoPosts = append(hugoPosts, hugoPhoto)
-		case "quote":
-			quotePost := got.QuotePost{}
-			json.Unmarshal(elem, &quotePost)
+			switch postType := postBase.PostType; postType {
+			case "audio":
+				audioPost := got.AudioPost{}
+				json.Unmarshal(elem, &audioPost)
 
-			hugoQuote := HugoPost{}
+				hugoAudio := HugoPost{}
 
-			hugoQuote.Title = fmt.Sprintf("Quote for %s", quotePost.BasePost.Date)
-			hugoQuote.Date = quotePost.BasePost.Date
-			hugoQuote.Tags = quotePost.BasePost.Tags
-			hugoQuote.Categories = append(hugoQuote.Categories, "imported from tumblr", "quote")
-			hugoQuote.Content = fmt.Sprintf("%s", quotePost.Text)
+				hugoAudio.Title = audioPost.Caption
+				hugoAudio.Date = audioPost.BasePost.Date
+				hugoAudio.Tags = audioPost.BasePost.Tags
+				hugoAudio.Categories = append(hugoAudio.Categories, "imported from tumblr", "audio")
+				hugoAudio.Content = audioPost.Player
 
-			hugoPosts = append(hugoPosts, hugoQuote)
-		case "text":
-			textPost := got.TextPost{}
-			json.Unmarshal(elem, &textPost)
+				hugoPosts = append(hugoPosts, hugoAudio)
+			case "link":
+				linkPost := got.LinkPost{}
+				json.Unmarshal(elem, &linkPost)
 
-			hugoText := HugoPost{}
+				hugoLink := HugoPost{}
 
-			hugoText.Title = textPost.Title
-			hugoText.Date = textPost.BasePost.Date
-			hugoText.Tags = textPost.BasePost.Tags
-			hugoText.Categories = append(hugoText.Categories, "imported from tumblr", "text")
-			hugoText.Content = fmt.Sprintf("%s", textPost.Body)
+				hugoLink.Title = linkPost.Title
+				hugoLink.Date = linkPost.BasePost.Date
+				hugoLink.Tags = linkPost.BasePost.Tags
+				hugoLink.Categories = append(hugoLink.Categories, "imported from tumblr", "link")
+				hugoLink.Content = fmt.Sprintf("[%s](%s)", linkPost.Description, linkPost.Url)
 
-			hugoPosts = append(hugoPosts, hugoText)
-		default:
-			fmt.Println("\n%v\n", postType)
+				hugoPosts = append(hugoPosts, hugoLink)
+			case "photo":
+				photoPost := got.PhotoPost{}
+				json.Unmarshal(elem, &photoPost)
+
+				hugoPhoto := HugoPost{}
+
+				hugoPhoto.Title = fmt.Sprintf("Photo for %s", photoPost.BasePost.Date)
+				hugoPhoto.Date = photoPost.BasePost.Date
+				hugoPhoto.Tags = photoPost.BasePost.Tags
+				hugoPhoto.Categories = append(hugoPhoto.Categories, "imported from tumblr", "photo")
+				hugoPhoto.Content = fmt.Sprintf("![%s](%s) <br /> %s", photoPost.BasePost.Post_url, photoPost.Photos[0].Alt_sizes[0].Url, photoPost.Caption)
+
+				hugoPosts = append(hugoPosts, hugoPhoto)
+			case "quote":
+				quotePost := got.QuotePost{}
+				json.Unmarshal(elem, &quotePost)
+
+				hugoQuote := HugoPost{}
+
+				hugoQuote.Title = fmt.Sprintf("Quote for %s", quotePost.BasePost.Date)
+				hugoQuote.Date = quotePost.BasePost.Date
+				hugoQuote.Tags = quotePost.BasePost.Tags
+				hugoQuote.Categories = append(hugoQuote.Categories, "imported from tumblr", "quote")
+				hugoQuote.Content = fmt.Sprintf("%s", quotePost.Text)
+
+				hugoPosts = append(hugoPosts, hugoQuote)
+			case "text":
+				textPost := got.TextPost{}
+				json.Unmarshal(elem, &textPost)
+
+				hugoText := HugoPost{}
+
+				hugoText.Title = textPost.Title
+				hugoText.Date = textPost.BasePost.Date
+				hugoText.Tags = textPost.BasePost.Tags
+				hugoText.Categories = append(hugoText.Categories, "imported from tumblr", "text")
+				hugoText.Content = fmt.Sprintf("%s", textPost.Body)
+
+				hugoPosts = append(hugoPosts, hugoText)
+			case "video":
+				videoPost := got.VideoPost{}
+				json.Unmarshal(elem, &videoPost)
+
+				hugoVideo := HugoPost{}
+
+				hugoVideo.Title = videoPost.Caption
+				hugoVideo.Date = videoPost.BasePost.Date
+				hugoVideo.Tags = videoPost.BasePost.Tags
+				hugoVideo.Categories = append(hugoVideo.Categories, "imported from tumblr", "video")
+				hugoVideo.Content = videoPost.Player[0].Embed_code
+
+				hugoPosts = append(hugoPosts, hugoVideo)
+			default:
+				fmt.Printf("\n%s\n", postType)
+			}
 		}
 	}
 
 //	fmt.Printf("%+v", hugoPosts)
-//	fmt.Println(len(hugoPosts))
+	fmt.Println(len(hugoPosts))
 }
