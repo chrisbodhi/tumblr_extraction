@@ -131,7 +131,7 @@ func main() {
 			case "quote":
 				quotePost := got.QuotePost{}
 				json.Unmarshal(elem, &quotePost)
-				fmt.Printf("%+v", quotePost)
+
 				hugoQuote := HugoPost{}
 
 				dateTime := str.Replace(quotePost.BasePost.Date, " GMT", "", 1)
