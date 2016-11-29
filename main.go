@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	str "strings"
+	"text/template"
 
 	got "github.com/MariaTerzieva/gotumblr"
 	"github.com/joho/godotenv"
@@ -10,21 +13,46 @@ import (
 
 var myEnvs map[string]string
 
+type HugoPost struct {
+	Title      string
+	Date       string
+	Tags       []string
+	Categories []string
+	Content    string
+}
+
+var hugoPosts []HugoPost
+
+func createHugoFile(post HugoPost) {
+	temp, err := template.ParseFiles("./post.tmpl")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	spaced_title := str.ToLower(post.Title)
+	title := str.Replace(spaced_title, " ", "-", -1)
+
+	file, err := os.Create(title + ".md")
+	if err != nil {
+		fmt.Println("create file: ", err)
+		return
+	}
+
+	err = temp.Execute(file, post)
+	if err != nil {
+		fmt.Println("execute: ", err)
+		return
+	}
+
+	file.Close()
+}
+
 func main() {
 	myEnvs, err := godotenv.Read()
 	if err != nil {
 		fmt.Printf("Error loading .env file.")
 	}
-
-	type HugoPost struct {
-		Title      string
-		Date       string
-		Tags       []string
-		Categories []string
-		Content    string
-	}
-
-	var hugoPosts []HugoPost
 
 	client := got.NewTumblrRestClient(
 		myEnvs["CONSUMER_KEY"],
@@ -38,13 +66,14 @@ func main() {
 
 	opts := map[string]string{}
 
-	posts := client.Posts(codeBlog, "", opts)
-	total := posts.Total_posts
-	timesToReq := int(total / 20) + 1
-
+//	posts := client.Posts(codeBlog, "", opts)
+//	total := posts.Total_posts
+//	timesToReq := int(total/20) + 1
+	timesToReq := 0
 	for i := 0; i <= timesToReq; i++ {
 
-		opts["offset"] = fmt.Sprintf("%d", i * 20)
+		opts["offset"] = fmt.Sprintf("%d", i*20)
+		opts["limit"] = "20" // todo
 		posts := client.Posts(codeBlog, "", opts)
 
 		for _, elem := range posts.Posts {
@@ -58,8 +87,11 @@ func main() {
 
 				hugoAudio := HugoPost{}
 
+				dateTime := str.Replace(audioPost.BasePost.Date, " GMT", "", 1)
+				date := str.Replace(dateTime, " ", "T", 1)
+
 				hugoAudio.Title = audioPost.Caption
-				hugoAudio.Date = audioPost.BasePost.Date
+				hugoAudio.Date = date
 				hugoAudio.Tags = audioPost.BasePost.Tags
 				hugoAudio.Categories = append(hugoAudio.Categories, "imported from tumblr", "audio")
 				hugoAudio.Content = audioPost.Player
@@ -71,8 +103,11 @@ func main() {
 
 				hugoLink := HugoPost{}
 
+				dateTime := str.Replace(linkPost.BasePost.Date, " GMT", "", 1)
+				date := str.Replace(dateTime, " ", "T", 1)
+
 				hugoLink.Title = linkPost.Title
-				hugoLink.Date = linkPost.BasePost.Date
+				hugoLink.Date = date
 				hugoLink.Tags = linkPost.BasePost.Tags
 				hugoLink.Categories = append(hugoLink.Categories, "imported from tumblr", "link")
 				hugoLink.Content = fmt.Sprintf("[%s](%s)", linkPost.Description, linkPost.Url)
@@ -84,8 +119,11 @@ func main() {
 
 				hugoPhoto := HugoPost{}
 
-				hugoPhoto.Title = fmt.Sprintf("Photo for %s", photoPost.BasePost.Date)
-				hugoPhoto.Date = photoPost.BasePost.Date
+				dateTime := str.Replace(photoPost.BasePost.Date, " GMT", "", 1)
+				date := str.Replace(dateTime, " ", "T", 1)
+
+				hugoPhoto.Title = fmt.Sprintf("Photo for %s", str.Split(photoPost.BasePost.Date, " ")[0])
+				hugoPhoto.Date = date
 				hugoPhoto.Tags = photoPost.BasePost.Tags
 				hugoPhoto.Categories = append(hugoPhoto.Categories, "imported from tumblr", "photo")
 				hugoPhoto.Content = fmt.Sprintf("![%s](%s) <br /> %s", photoPost.BasePost.Post_url, photoPost.Photos[0].Alt_sizes[0].Url, photoPost.Caption)
@@ -94,14 +132,17 @@ func main() {
 			case "quote":
 				quotePost := got.QuotePost{}
 				json.Unmarshal(elem, &quotePost)
-
+				fmt.Printf("%+v", quotePost)
 				hugoQuote := HugoPost{}
 
-				hugoQuote.Title = fmt.Sprintf("Quote for %s", quotePost.BasePost.Date)
-				hugoQuote.Date = quotePost.BasePost.Date
+				dateTime := str.Replace(quotePost.BasePost.Date, " GMT", "", 1)
+				date := str.Replace(dateTime, " ", "T", 1)
+
+				hugoQuote.Title = fmt.Sprintf("Quote for %s", str.Split(quotePost.BasePost.Date, " ")[0])
+				hugoQuote.Date = date
 				hugoQuote.Tags = quotePost.BasePost.Tags
 				hugoQuote.Categories = append(hugoQuote.Categories, "imported from tumblr", "quote")
-				hugoQuote.Content = fmt.Sprintf("%s", quotePost.Text)
+				hugoQuote.Content = fmt.Sprintf("%s<br /><br />%s", quotePost.Text, quotePost.Source)
 
 				hugoPosts = append(hugoPosts, hugoQuote)
 			case "text":
@@ -110,8 +151,11 @@ func main() {
 
 				hugoText := HugoPost{}
 
+				dateTime := str.Replace(textPost.BasePost.Date, " GMT", "", 1)
+				date := str.Replace(dateTime, " ", "T", 1)
+
 				hugoText.Title = textPost.Title
-				hugoText.Date = textPost.BasePost.Date
+				hugoText.Date = date
 				hugoText.Tags = textPost.BasePost.Tags
 				hugoText.Categories = append(hugoText.Categories, "imported from tumblr", "text")
 				hugoText.Content = fmt.Sprintf("%s", textPost.Body)
@@ -123,8 +167,11 @@ func main() {
 
 				hugoVideo := HugoPost{}
 
+				dateTime := str.Replace(videoPost.BasePost.Date, " GMT", "", 1)
+				date := str.Replace(dateTime, " ", "T", 1)
+
 				hugoVideo.Title = videoPost.Caption
-				hugoVideo.Date = videoPost.BasePost.Date
+				hugoVideo.Date = date
 				hugoVideo.Tags = videoPost.BasePost.Tags
 				hugoVideo.Categories = append(hugoVideo.Categories, "imported from tumblr", "video")
 				hugoVideo.Content = videoPost.Player[0].Embed_code
@@ -136,6 +183,10 @@ func main() {
 		}
 	}
 
-//	fmt.Printf("%+v", hugoPosts)
+	//	fmt.Printf("%+v", hugoPosts)
 	fmt.Println(len(hugoPosts))
+
+	for _, post := range hugoPosts {
+		createHugoFile(post)
+	}
 }

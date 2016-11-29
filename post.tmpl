@@ -1,8 +1,8 @@
 +++
-title = {{ .Title }}
-date = {{ .Date }}
-tags = {{ .Tags }}
-categories = {{ .Categories }}
+title = "{{ .Title }}"
+date = "{{ .Date }}"
+tags = [{{ range .Tags }}"{{ . }}", {{ end }}]
+categories = [{{ range .Categories }}"{{ . }}", {{ end }}]
 draft = false
 comments = false
 showcomments = false
