@@ -66,14 +66,13 @@ func main() {
 
 	opts := map[string]string{}
 
-//	posts := client.Posts(codeBlog, "", opts)
-//	total := posts.Total_posts
-//	timesToReq := int(total/20) + 1
-	timesToReq := 0
+	posts := client.Posts(codeBlog, "", opts)
+	total := posts.Total_posts
+	timesToReq := int(total/20) + 1
+
 	for i := 0; i <= timesToReq; i++ {
 
 		opts["offset"] = fmt.Sprintf("%d", i*20)
-		opts["limit"] = "20" // todo
 		posts := client.Posts(codeBlog, "", opts)
 
 		for _, elem := range posts.Posts {
