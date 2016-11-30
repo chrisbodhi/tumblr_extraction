@@ -43,7 +43,6 @@ func createHugoFile(post HugoPost) {
 		title = title[0:99]
 	}
 
-
 	file, err := os.Create(title + ".md")
 	if err != nil {
 		fmt.Println("create file: ", err)
@@ -73,18 +72,18 @@ func main() {
 		"",
 		"http://api.tumblr.com")
 
-	codeBlog := "codeblocks.tumblr.com"
+	blog := myEnvs["TUMBLR_SITE"]
 
 	opts := map[string]string{}
 
-	posts := client.Posts(codeBlog, "", opts)
+	posts := client.Posts(blog, "", opts)
 	total := posts.Total_posts
 	timesToReq := int(total/20) + 1
 
 	for i := 0; i <= timesToReq; i++ {
 
 		opts["offset"] = fmt.Sprintf("%d", i*20)
-		posts := client.Posts(codeBlog, "", opts)
+		posts := client.Posts(blog, "", opts)
 
 		for _, elem := range posts.Posts {
 			postBase := got.BasePost{}
