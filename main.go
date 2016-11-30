@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
+	"regexp"
 	str "strings"
 	"text/template"
 
@@ -30,8 +32,17 @@ func createHugoFile(post HugoPost) {
 		return
 	}
 
-	spaced_title := str.ToLower(post.Title)
-	title := str.Replace(spaced_title, " ", "-", -1)
+	reg, err := regexp.Compile("[^A-Za-z0-9]+")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	lower_title := str.ToLower(post.Title)
+	title := str.Trim(reg.ReplaceAllString(lower_title, "-"), "-")
+	if len(title) > 100 {
+		title = title[0:99]
+	}
+
 
 	file, err := os.Create(title + ".md")
 	if err != nil {
@@ -89,11 +100,11 @@ func main() {
 				dateTime := str.Replace(audioPost.BasePost.Date, " GMT", "", 1)
 				date := str.Replace(dateTime, " ", "T", 1)
 
-				hugoAudio.Title = audioPost.Caption
+				hugoAudio.Title = fmt.Sprintf("Video for %s", str.Split(audioPost.BasePost.Date, " ")[0])
 				hugoAudio.Date = date
 				hugoAudio.Tags = audioPost.BasePost.Tags
 				hugoAudio.Categories = append(hugoAudio.Categories, "imported from tumblr", "audio")
-				hugoAudio.Content = audioPost.Player
+				hugoAudio.Content = fmt.Sprintf("%s<br /><br />%s", audioPost.Player, audioPost.Caption)
 
 				hugoPosts = append(hugoPosts, hugoAudio)
 			case "link":
@@ -109,7 +120,7 @@ func main() {
 				hugoLink.Date = date
 				hugoLink.Tags = linkPost.BasePost.Tags
 				hugoLink.Categories = append(hugoLink.Categories, "imported from tumblr", "link")
-				hugoLink.Content = fmt.Sprintf("[%s](%s)", linkPost.Description, linkPost.Url)
+				hugoLink.Content = fmt.Sprintf("%s<br /><br />[goto](%s)", linkPost.Description, linkPost.Url)
 
 				hugoPosts = append(hugoPosts, hugoLink)
 			case "photo":
@@ -153,7 +164,7 @@ func main() {
 				dateTime := str.Replace(textPost.BasePost.Date, " GMT", "", 1)
 				date := str.Replace(dateTime, " ", "T", 1)
 
-				hugoText.Title = textPost.Title
+				hugoText.Title = str.Replace(textPost.Title, "\"", "'", -1)
 				hugoText.Date = date
 				hugoText.Tags = textPost.BasePost.Tags
 				hugoText.Categories = append(hugoText.Categories, "imported from tumblr", "text")
@@ -169,11 +180,11 @@ func main() {
 				dateTime := str.Replace(videoPost.BasePost.Date, " GMT", "", 1)
 				date := str.Replace(dateTime, " ", "T", 1)
 
-				hugoVideo.Title = videoPost.Caption
+				hugoVideo.Title = fmt.Sprintf("Video for %s", str.Split(videoPost.BasePost.Date, " ")[0])
 				hugoVideo.Date = date
 				hugoVideo.Tags = videoPost.BasePost.Tags
 				hugoVideo.Categories = append(hugoVideo.Categories, "imported from tumblr", "video")
-				hugoVideo.Content = videoPost.Player[0].Embed_code
+				hugoVideo.Content = fmt.Sprintf("%s<br /><br />%s", videoPost.Player[0].Embed_code, videoPost.Caption)
 
 				hugoPosts = append(hugoPosts, hugoVideo)
 			default:
